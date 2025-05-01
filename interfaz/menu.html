@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulador de Examen</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding-top: 100px;
+            background-color: #f9f9f9;
+        }
+        button {
+            font-size: 18px;
+            padding: 15px 30px;
+            margin: 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background-color: #28a745;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bienvenido al Simulador de Examen de Inglés</h1>
+
+    <form action="/iniciar_examen/practica" method="get">
+        <button type="submit">Examen de prueba</button>
+    </form>
+
+    <form action="/iniciar_examen/final" method="get">
+        <button type="submit">Examen final</button>
+    </form>
+</body>
+</html>

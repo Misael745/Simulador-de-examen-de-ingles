@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Examen</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 50px auto;
+            max-width: 700px;
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .pregunta {
+            margin-bottom: 30px;
+        }
+        .opcion {
+            display: block;
+            margin: 10px 0;
+        }
+        .navegacion {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .navegacion button {
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+        .indice {
+            text-align: right;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <form method="post" action="/guardar_respuesta">
+        <div class="pregunta">
+            <div class="indice">Pregunta {{ indice_actual + 1 }} de {{ total_preguntas }}</div>
+            <h3>{{ pregunta.texto }}</h3>
+            {% for r in pregunta.respuestas %}
+                <label class="opcion">
+                    <input type="radio" name="respuesta_id" value="{{ r.respuesta_id }}" {% if respuesta_guardada == r.respuesta_id %}checked{% endif %}>
+                    {{ r.texto }}
+                </label>
+            {% endfor %}
+        </div>
+        <div class="navegacion">
+            {% if indice_actual > 0 %}
+                <button name="accion" value="anterior">Anterior</button>
+            {% else %}
+                <div></div>
+            {% endif %}
+
+            {% if indice_actual < total_preguntas - 1 %}
+                <button name="accion" value="siguiente">Siguiente</button>
+            {% else %}
+                <button name="accion" value="terminar">Terminar</button>
+            {% endif %}
+        </div>
+        <input type="hidden" name="indice_actual" value="{{ indice_actual }}">
+        <input type="hidden" name="examen_id" value="{{ examen_id }}">
+        <input type="hidden" name="pregunta_id" value="{{ pregunta.pregunta_id }}">
+    </form>
+</body>
+</html>
