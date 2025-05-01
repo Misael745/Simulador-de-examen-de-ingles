@@ -92,7 +92,7 @@ def ejecutar_simulacion_practica():
                     # Mostrar examen generado con respuestas
                 print("\n📝 Examen generado: ")
                 for i, pregunta in enumerate(examen, 1):
-                    print(f"{i}. (Nivel {pregunta.nivel_id}) {pregunta.texto[:50]}...")
+                    print(f"{i}. (Nivel {pregunta.nivel_id}) {pregunta.texto[:100]}...")
                     
             else:
                 print(f"🔸 El usuario {usuario.nombre} {usuario.apellido} no puede recibir más exámenes de práctica.")
@@ -169,4 +169,4 @@ def ejecutar_simulacion_final():
 
 
 if __name__ == "__main__":
- ejecutar_simulacion_final()
+  ejecutar_simulacion_practica
