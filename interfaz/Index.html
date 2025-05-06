@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Bienvenido</title>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 20px; background: #f9f9f9; }
+    .botones { margin-bottom: 30px; }
+    .botones a { margin: 0 10px; text-decoration: none; }
+    .botones button { padding: 10px 20px; border:none; border-radius:5px; background:#007BFF; color:#fff; cursor:pointer; }
+    .botones button:hover { background:#0056b3; }
+    .filtros { margin: 20px 0; }
+    .filtros input, .filtros select, .filtros button { margin: 0 5px; padding: 6px; }
+    .grafico { width: 80%; max-width:700px; margin:30px auto; background:#fff; padding:20px; border-radius:8px; }
+    img { width:100%; height:auto; }
+  </style>
+</head>
+<body>
+  <h1>Dashboard de Exámenes</h1>
+
+  <div class="botones">
+    <a href="/login"><button>Iniciar sesión</button></a>
+    <a href="/register"><button>Registrarse</button></a>
+  </div>
+
+  <div class="filtros">
+    Desde: <input type="date" id="startDate" value="{{ start_date }}">
+    Hasta: <input type="date" id="endDate" value="{{ end_date }}">
+    Tipo:
+    <select id="typeFilter">
+      <option value="todos" {% if tipo=='todos' %}selected{% endif %}>Todos</option>
+      <option value="practica" {% if tipo=='practica' %}selected{% endif %}>Práctica</option>
+      <option value="final" {% if tipo=='final' %}selected{% endif %}>Final</option>
+    </select>
+    <button onclick="filtrarYActualizar()">Filtrar</button>
+  </div>
+
+  <div class="grafico">
+    <h2>Puntuación en el Tiempo</h2>
+    <!-- Posición para la gráfica de puntuaciones -->
+    <img src="data:image/png;base64,{{ chart_scores }}" alt="Puntuaciones">
+  </div>
+  <div class="grafico">
+    <h2>Cantidad de Exámenes por Tipo</h2>
+    <!-- Posición para la gráfica de tipos -->
+    <img src="data:image/png;base64,{{ chart_types }}" alt="Exámenes por Tipo">
+  </div>
+  <div class="grafico">
+    <h2>Usuarios Únicos</h2>
+    <!-- Posición para la gráfica de usuarios -->
+    <img src="data:image/png;base64,{{ chart_users }}" alt="Usuarios Únicos">
+  </div>
+
+  <script>
+    // Cuando cambien filtros, recargar página con parámetros
+    function filtrarYActualizar() {
+      const start = document.getElementById('startDate').value;
+      const end   = document.getElementById('endDate').value;
+      const type  = document.getElementById('typeFilter').value;
+      const params = new URLSearchParams();
+      if (start) params.set('start_date', start);
+      if (end)   params.set('end_date', end);
+      if (type)  params.set('tipo', type);
+      window.location.search = params.toString();
+    }
+  </script>
+</body>
+</html>
