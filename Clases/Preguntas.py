@@ -79,7 +79,7 @@ class Preguntas:
         return examen
     
     @staticmethod
-    def generar_examen_final(preguntas: List['Preguntas'], cantidad_total: int = 3) -> List['Preguntas']:
+    def generar_examen_final(preguntas: List['Preguntas'], cantidad_total: int = 40) -> List['Preguntas']:
     
         # Clasificar preguntas por nivel
         preguntas_por_nivel = {}

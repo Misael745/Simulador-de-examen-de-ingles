@@ -7,9 +7,13 @@ from Clases.Examenes import Examenes
 from Clases.RespuestaUsuario import RespuestaUsuario
 import hashlib
 import random
+from collections import Counter
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from io import BytesIO
 import base64
+import pandas as pd
 
 app = Flask(__name__, template_folder='interfaz', static_folder='Style')
 app.secret_key = 'super_secret_key'
@@ -49,56 +53,111 @@ def fig_to_base64(fig):
     fig.savefig(buf, format='png', bbox_inches='tight')
     buf.seek(0)
     data = base64.b64encode(buf.getvalue()).decode('ascii')
+    img = base64.b64encode(buf.getvalue()).decode('ascii')
+    buf.close()
     plt.close(fig)
     return data
+    return img
+
+def load_examenes(start_date, end_date, tipo):
+    # Carga los exámenes en un DataFrame
+    c = Conexion()
+    conn = c.obtener_conexion()
+    query = """
+      SELECT e.fecha, e.porcentaje, e.tipo, e.nivel
+      FROM Examenes e
+      WHERE (%s = 'todos' OR e.tipo = %s)
+        AND (%s = '' OR e.fecha >= %s)
+        AND (%s = '' OR e.fecha <= %s)
+    """
+    params = [tipo, tipo, start_date, start_date, end_date, end_date + " 23:59:59"]
+    df = pd.read_sql_query(query, conn, params=params, parse_dates=['fecha'])
+    c.cerrar_conexion()
+    return df
 
 @app.route('/', methods=['GET'])
 def home():
-    # Recuperar filtros
     start_date = request.args.get('start_date', '')
     end_date   = request.args.get('end_date', '')
     tipo       = request.args.get('tipo', 'todos')
-    # Obtener los exámenes
-    examenes = obtener_examenes_filtrados(start_date, end_date, tipo)
+    examenes   = obtener_examenes_filtrados(start_date, end_date, tipo)
 
-    # 1) Gráfica de puntuación en el tiempo
-    fechas     = [e['fecha'] for e in examenes]
-    puntuaciones = [e['puntuacion'] or 0 for e in examenes]
+    df = load_examenes(start_date, end_date, tipo)
+    puntuaciones = []
+    for e in examenes:
+        try:
+            # convierte a float; si falla, pon 0.0
+            puntuaciones.append(float(e.get('puntuacion') or 0.0))
+        except Exception:
+            puntuaciones.append(0.0)
+
     fig1, ax1 = plt.subplots()
-    ax1.plot(fechas, puntuaciones, marker='o')
-    ax1.set_title('Puntuación en el Tiempo')
-    ax1.set_xlabel('Fecha')
-    ax1.set_ylabel('Puntuación')
+    ax1.hist(puntuaciones, bins=10, edgecolor='black')
+    ax1.set_title('Distribución de Puntuaciones')
+    ax1.set_xlabel('Puntuación')
+    ax1.set_ylabel('Frecuencia')
     chart_scores = fig_to_base64(fig1)
+    
+    fig1, ax1 = plt.subplots()
+    ax1.hist(df['porcentaje'].dropna(), bins=10, edgecolor='black')
+    ax1.set_title('Distribución de Porcentajes')
+    ax1.set_xlabel('Porcentaje')
+    ax1.set_ylabel('Cantidad')
+    chart_hist = fig_to_base64(fig1)
 
-    # 2) Gráfica de cantidad por tipo de examen
+    # 2) Gráfico de pastel de tipos de examen
     tipos = [e['tipo'] for e in examenes]
     tipos_unicos = list(set(tipos))
     counts = [tipos.count(t) for t in tipos_unicos]
     fig2, ax2 = plt.subplots()
-    ax2.bar(tipos_unicos, counts)
-    ax2.set_title('Cantidad de Exámenes por Tipo')
-    ax2.set_ylabel('Cantidad')
-    chart_types = fig_to_base64(fig2)
+    ax2.pie(counts, labels=tipos_unicos, autopct='%1.1f%%', startangle=90)
+    ax2.axis('equal')
+    ax2.set_title('Distribución por Tipo de Examen')
+    buf2 = BytesIO(); fig2.savefig(buf2, format='png', bbox_inches='tight'); buf2.seek(0)
+    chart_types = base64.b64encode(buf2.getvalue()).decode('ascii')
+    plt.close(fig2)
 
-    # 3) Gráfica de usuarios únicos
-    usuarios_unicos = len({e['usuario_id'] for e in examenes})
+    # 3) Histograma de número de exámenes por usuario
+    #    (histograma de la lista [conteo_examenes_por_usuario])
+    from collections import Counter
+    user_counts = list(Counter(e['usuario_id'] for e in examenes).values())
     fig3, ax3 = plt.subplots()
-    ax3.bar(['Usuarios'], [usuarios_unicos])
-    ax3.set_title('Usuarios Únicos')
-    ax3.set_ylabel('Cantidad')
-    chart_users = fig_to_base64(fig3)
+    ax3.hist(user_counts, bins=range(1, max(user_counts or [1]) + 2), align='left', edgecolor='black')
+    ax3.set_xticks(range(1, max(user_counts or [1]) + 1))
+    ax3.set_title('Exámenes por Usuario')
+    ax3.set_xlabel('Número de Exámenes')
+    ax3.set_ylabel('Cantidad de Usuarios')
+    buf3 = BytesIO(); fig3.savefig(buf3, format='png', bbox_inches='tight'); buf3.seek(0)
+    chart_users = base64.b64encode(buf3.getvalue()).decode('ascii')
+    plt.close(fig3)
+    
+    avg_by_type = df.groupby('tipo')['porcentaje'].mean()
+    fig3, ax3 = plt.subplots()
+    ax3.bar(avg_by_type.index, avg_by_type.values)
+    ax3.set_title('Promedio de Porcentaje por Tipo')
+    ax3.set_xlabel('Tipo de Examen')
+    ax3.set_ylabel('Promedio (%)')
+    chart_avgtype = fig_to_base64(fig3)
+    
+    counts_nivel = df['nivel'].value_counts()
+    fig4, ax4 = plt.subplots()
+    ax4.pie(counts_nivel.values, labels=counts_nivel.index, autopct='%1.1f%%', startangle=90)
+    ax4.set_title('Distribución de Niveles Aprobados')
+    ax4.axis('equal')
+    chart_pie = fig_to_base64(fig4)
 
-    # Renderiza la plantilla pasando las tres gráficas
     return render_template(
         'index.html',
-        examenes=examenes,
         start_date=start_date,
         end_date=end_date,
         tipo=tipo,
+        # ya no necesitas pasar examenes si sólo vas a mostrar gráficos
         chart_scores=chart_scores,
+        chart_hist=chart_hist,
         chart_types=chart_types,
-        chart_users=chart_users
+        chart_users=chart_users,
+        chart_avgtype=chart_avgtype,
+        chart_pie=chart_pie
     )
 
 
@@ -161,27 +220,68 @@ def dashboard():
     if 'usuario_id' not in session:
         return redirect('/login')
 
-    conexion     = Conexion()
-    conn         = conexion.obtener_conexion()
-    cursor       = conn.cursor(dictionary=True)
-    usuario_id   = session['usuario_id']
-    cursor.execute(
-        "SELECT fecha, tipo FROM Examenes WHERE usuario_id = %s",
-        (usuario_id,)
-    )
-    examenes     = cursor.fetchall()
-    conexion.cerrar_conexion()
+    user_id = session['usuario_id']
 
-    practicas    = sum(1 for e in examenes if e['tipo'] == 'practica')
-    finales      = sum(1 for e in examenes if e['tipo'] == 'final')
-    intentos_pr  = max(0, 5 - practicas)
-    intentos_fin = max(0, 2 - finales)
+    # 1) Exámenes calificados (tabla + histograma)
+    c = Conexion()
+    cursor = c.obtener_conexion().cursor(dictionary=True)
+    cursor.execute("""
+        SELECT examen_id, fecha, tipo, nivel, puntuacion
+        FROM Examenes
+        WHERE usuario_id = %s AND puntuacion IS NOT NULL
+        ORDER BY fecha DESC
+    """, (user_id,))
+    examenes = cursor.fetchall()
+    c.cerrar_conexion()
+
+    # 2) Contar intentos usados
+    c2 = Conexion()
+    cur2 = c2.obtener_conexion().cursor()
+    cur2.execute("""
+        SELECT tipo, COUNT(*) FROM Examenes
+        WHERE usuario_id = %s
+        GROUP BY tipo
+    """, (user_id,))
+    counts = {row[0]: row[1] for row in cur2.fetchall()}
+    c2.cerrar_conexion()
+
+    used_pr = counts.get('practica', 0)
+    used_fn = counts.get('final', 0)
+    max_pr = 5
+    max_fn = 2
+    left_pr = max(0, max_pr - used_pr)
+    left_fn = max(0, max_fn - used_fn)
+
+    # 3) Histograma de calificaciones
+    puntuaciones = []
+    for e in examenes:
+        try:
+            puntuaciones.append(float(e['puntuacion']))
+        except:
+            continue
+
+    fig, ax = plt.subplots()
+    ax.hist(puntuaciones, bins=10, edgecolor='black')
+    ax.set_title('Histograma de Mis Calificaciones')
+    ax.set_xlabel('Calificación')
+    ax.set_ylabel('Frecuencia')
+    buf = BytesIO()
+    fig.savefig(buf, format='png', bbox_inches='tight')
+    buf.seek(0)
+    chart_scores = base64.b64encode(buf.getvalue()).decode('ascii')
+    plt.close(fig)
 
     return render_template(
         'menu.html',
         nombre=session['nombre'],
-        intentos_practica=intentos_pr,
-        intentos_final=intentos_fin
+        examenes=examenes,
+        chart_scores=chart_scores,
+        used_pr=used_pr,
+        used_fn=used_fn,
+        left_pr=left_pr,
+        left_fn=left_fn,
+        max_pr=max_pr,
+        max_fn=max_fn
     )
 
 @app.route('/iniciar_examen/<tipo>')
@@ -192,8 +292,25 @@ def iniciar_examen(tipo):
         flash('Tipo de examen inválido')
         return redirect('/dashboard')
 
+    # Valida intentos antes de crear examen
+    user_id = session['usuario_id']
+    c = Conexion()
+    cur = c.obtener_conexion().cursor()
+    cur.execute("""
+        SELECT COUNT(*) FROM Examenes WHERE usuario_id = %s AND tipo = %s
+    """, (user_id, tipo))
+    used = cur.fetchone()[0]
+    c.cerrar_conexion()
+
+    limit = 5 if tipo == 'practica' else 2
+    if used >= limit:
+        flash(f'Has agotado tus {limit} intentos de examen "{tipo}".')
+        return redirect('/dashboard')
+
+    # Si quedan intentos, procedemos como antes
     session['tipo'] = tipo
-    # 1) Cargamos preguntas y respuestas
+
+    # 1) Carga preguntas/respuestas
     c1 = Conexion()
     preguntas = Preguntas.obtener_todos(c1)
     respuestas = Respuestas.obtener_todos(c1)
@@ -202,17 +319,17 @@ def iniciar_examen(tipo):
         dict_preg[r.pregunta_id].agregar_respuesta(r)
     c1.cerrar_conexion()
 
-    # 2) Creamos examen en BD
+    # 2) Crear examen en BD
     c2 = Conexion()
     if tipo == 'practica':
-        examen_usuario  = Examenes.crear_examen_para_usuario(c2, session['usuario_id'])
+        examen_usuario = Examenes.crear_examen_para_usuario(c2, user_id)
         preguntas_examen = Preguntas.generar_examen_practica(preguntas)
     else:
-        examen_usuario  = Examenes.crear_examen_final_para_usuario(c2, session['usuario_id'])
+        examen_usuario = Examenes.crear_examen_final_para_usuario(c2, user_id)
         preguntas_examen = Preguntas.generar_examen_final(preguntas)
     c2.cerrar_conexion()
 
-    # 3) Guardamos en sesión y redirigimos a la primera pregunta
+    # 3) Guardar en sesión y redirigir
     session['preguntas']  = [p.pregunta_id for p in preguntas_examen]
     session['examen_id']  = examen_usuario.examen_id
     session['respuestas'] = {}

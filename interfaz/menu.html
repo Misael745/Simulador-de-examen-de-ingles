@@ -1,27 +1,62 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Menú</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='StyleLogin.css') }}">
+  <meta charset="UTF-8">
+  <title>Mi Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='StyleMenu.css') }}">
 </head>
 <body>
-    <h1>Bienvenido al examen de inglés, {{ nombre }}</h1>
 
-    <form action="/iniciar_examen/practica" method="GET">
-        <button type="submit" {% if intentos_practica == 0 %}disabled{% endif %}>Presentar examen de práctica</button>
-    </form>
+  <h1>Bienvenido, {{ nombre }}</h1>
 
-    <form action="/iniciar_examen/final" method="GET">
-        <button type="submit" {% if intentos_final == 0 %}disabled{% endif %}>Presentar examen final</button>
-    </form>
+  <div class="botones">
+    <button 
+      onclick="location.href='/iniciar_examen/practica'"
+      {% if left_pr == 0 %}disabled{% endif %}>
+      Examen de práctica
+    </button>
+    <button 
+      onclick="location.href='/iniciar_examen/final'"
+      {% if left_fn == 0 %}disabled{% endif %}>
+      Examen final
+    </button>
+    <button onclick="location.href='/logout'">Cerrar sesión</button>
+  </div>
 
-    <p>Intentos restantes:</p>
-    <ul>
-        <li>Práctica: {{ intentos_practica }}</li>
-        <li>Final: {{ intentos_final }}</li>
-    </ul>
+  <div class="info-intentos">
+    <p>Práctica: {{ used_pr }} de {{ max_pr }} ({{ left_pr }} restantes)</p>
+    <p>Final: {{ used_fn }} de {{ max_fn }} ({{ left_fn }} restantes)</p>
+  </div>
 
-    <a href="/logout">Cerrar sesión</a>
+  <!-- Tabla de exámenes calificados -->
+  <h2>Mis Exámenes</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th><th>Fecha</th><th>Tipo</th><th>Nivel</th><th>Calificación</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ex in examenes %}
+      <tr>
+        <td>{{ ex.examen_id }}</td>
+        <td>{{ ex.fecha }}</td>
+        <td>{{ ex.tipo }}</td>
+        <td>{{ ex.nivel }}</td>
+        <td>{{ ex.puntuacion }}</td>
+      </tr>
+      {% endfor %}
+      {% if examenes|length == 0 %}
+      <tr><td colspan="5">No tienes exámenes calificados aún.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+
+  <!-- Histograma de calificaciones -->
+  <div class="grafico">
+    <h2>Histograma de Mis Calificaciones</h2>
+    <img src="data:image/png;base64,{{ chart_scores }}" alt="Histograma">
+  </div>
+
 </body>
 </html>

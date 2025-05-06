@@ -170,3 +170,4 @@ def ejecutar_simulacion_final():
 
 if __name__ == "__main__":
   ejecutar_simulacion_practica()
+  ejecutar_simulacion_final()
