@@ -35,20 +35,37 @@
     <button onclick="filtrarYActualizar()">Filtrar</button>
   </div>
 
+  <!-- Histograma de puntuaciones -->
   <div class="grafico">
-    <h2>Puntuación en el Tiempo</h2>
-    <!-- Posición para la gráfica de puntuaciones -->
-    <img src="data:image/png;base64,{{ chart_scores }}" alt="Puntuaciones">
+    <h2>Distribución de Puntuaciones</h2>
+    <img src="data:image/png;base64,{{ chart_scores }}" alt="Histograma de Puntuaciones">
   </div>
+
   <div class="grafico">
-    <h2>Cantidad de Exámenes por Tipo</h2>
-    <!-- Posición para la gráfica de tipos -->
-    <img src="data:image/png;base64,{{ chart_types }}" alt="Exámenes por Tipo">
+    <h2>1. Histograma de Porcentajes</h2>
+    <img src="data:image/png;base64,{{ chart_hist }}" alt="Histograma">
   </div>
+
+  <!-- Pastel de tipos -->
   <div class="grafico">
-    <h2>Usuarios Únicos</h2>
-    <!-- Posición para la gráfica de usuarios -->
-    <img src="data:image/png;base64,{{ chart_users }}" alt="Usuarios Únicos">
+    <h2>Distribución por Tipo de Examen</h2>
+    <img src="data:image/png;base64,{{ chart_types }}" alt="Gráfico de Pastel de Tipos">
+  </div>
+
+  <!-- Histograma de exámenes por usuario -->
+  <div class="grafico">
+    <h2>Exámenes por Usuario</h2>
+    <img src="data:image/png;base64,{{ chart_users }}" alt="Histograma Exámenes por Usuario">
+  </div>
+
+  <div class="grafico">
+    <h2>3. Promedio por Tipo de Examen</h2>
+    <img src="data:image/png;base64,{{ chart_avgtype }}" alt="Promedio por Tipo">
+  </div>
+
+  <div class="grafico">
+    <h2>4. Distribución de Niveles</h2>
+    <img src="data:image/png;base64,{{ chart_pie }}" alt="Distribución de Niveles">
   </div>
 
   <script>
