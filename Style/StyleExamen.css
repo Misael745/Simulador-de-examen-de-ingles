@@ -1,0 +1,29 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 50px auto;
+    max-width: 700px;
+    background-color: #f9f9f9;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+.pregunta {
+    margin-bottom: 30px;
+}
+.opcion {
+    display: block;
+    margin: 10px 0;
+}
+.navegacion {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+.navegacion button {
+    padding: 10px 20px;
+    font-size: 16px;
+}
+.indice {
+    text-align: right;
+    color: #666;
+}

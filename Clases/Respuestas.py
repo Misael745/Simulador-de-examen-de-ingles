@@ -19,6 +19,7 @@ class Respuestas:
         Método estático para obtener todas las respuestas de la base de datos
         Retorna una lista de objetos Respuesta
         """
+        
         try:
             cursor = conexion.obtener_conexion().cursor(dictionary=True)
             query = "SELECT * FROM Respuestas"

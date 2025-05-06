@@ -3,6 +3,8 @@ from typing import List
 from mysql.connector import Error
 from Clases.Niveles import Niveles
 from Clases.Preguntas import Preguntas
+from Clases.Respuestas import Respuestas
+from Clases.RespuestaUsuario import RespuestaUsuario
 from Clases.conexion import Conexion
 import random
 from collections import Counter
@@ -139,71 +141,65 @@ class Examenes:
 
     def calificar_examen(self, conexion):
         try:
-            # Paso 1: Obtener las respuestas dadas para este examen
             cursor = conexion.obtener_cursor()
-            sql_respuestas = """
-                SELECT r.pregunta_id, r.respuesta_id, res.es_correcta, p.nivel_id
+            # 1) Traer respuestas del examen
+            sql = """
+                SELECT res.es_correcta, p.nivel_id
                 FROM RespuestasDadas r
                 JOIN Respuestas res ON r.respuesta_id = res.respuesta_id
                 JOIN Preguntas p ON r.pregunta_id = p.pregunta_id
                 WHERE r.examen_id = %s
             """
-            cursor.execute(sql_respuestas, (self.examen_id,))
-            respuestas = cursor.fetchall()
+            cursor.execute(sql, (self.examen_id,))
+            filas = cursor.fetchall()
 
-            # Paso 2: Calcular la puntuación y porcentaje de aciertos
-            puntuacion_total = 0
-            respuestas_correctas = 0
-            respuestas_por_nivel = Counter()
-            respuestas_correctas_por_nivel = Counter()
+            # 2) Contar aciertos y total de preguntas
+            correctas = sum(1 for es_correcta, _ in filas if es_correcta)
+            total = len(filas)
 
-            for respuesta in respuestas:
-                pregunta_id, respuesta_id, es_correcta, nivel_id = respuesta
+            # 3) Definir valor por respuesta según tipo de examen
+            valor_por_resp = 2.5 if self.tipo == 'final' else 5
+
+            # 4) Calcular puntuación bruta y redondear
+            puntaje = correctas * valor_por_resp
+            self.puntuacion = round(puntaje, 2)
+
+            # 5) Calcular porcentaje global de aciertos
+            pct = (correctas / total * 100) if total else 0
+            self.porcentaje = round(pct, 2)
+
+            # 6) Determinar nivel aprobado
+            cont_por_nivel = Counter()
+            corr_por_nivel = Counter()
+            for es_correcta, nivel_id in filas:
+                cont_por_nivel[nivel_id] += 1
                 if es_correcta:
-                    # La calificación varía según el tipo de examen
-                    if self.tipo == 'final':
-                        puntuacion_total += 2.5  # 2.5 puntos por respuesta correcta en el examen final
+                    corr_por_nivel[nivel_id] += 1
+            requisitos = {1:70, 2:70, 3:70}
+            aprobados = []
+            for nid in range(1, 4):
+                if cont_por_nivel[nid]:
+                    pct_n = corr_por_nivel[nid] / cont_por_nivel[nid] * 100
+                    if pct_n >= requisitos[nid]:
+                        aprobados.append(nid)
                     else:
-                        puntuacion_total += 5  # 5 puntos por respuesta correcta en el examen de práctica
-                    respuestas_correctas += 1
-                    respuestas_correctas_por_nivel[nivel_id] += 1
-                respuestas_por_nivel[nivel_id] += 1
+                        break
+            nivel_id_final = max(aprobados) if aprobados else 1
+            nombres = {1: 'Básico', 2: 'Intermedio', 3: 'Avanzado'}
+            self.nivel = nombres[nivel_id_final]
 
-            porcentaje_aciertos = (respuestas_correctas / len(respuestas)) * 100
+            # 7) Guardar correctas y total de preguntas para la sesión
+            self.correctas = correctas
+            self.total_preguntas = total
 
-            # Paso 3: Calcular el nivel aprobado
-            niveles_aprobados = []
-            niveles_requisitos = {1: 70, 2: 70, 3: 70}  # Básico: 1, Intermedio: 2, Avanzado: 3
-            niveles_aprobados_total = []
-
-            # Validamos cada nivel por separado, considerando que el usuario debe aprobar los niveles anteriores
-            for nivel_id in range(1, 4):  # Revisar los 3 niveles: Básico (1), Intermedio (2), Avanzado (3)
-                if nivel_id in respuestas_por_nivel:
-                    total_respuestas_nivel = respuestas_por_nivel[nivel_id]
-                    respuestas_correctas_nivel = respuestas_correctas_por_nivel.get(nivel_id, 0)
-                    porcentaje_nivel = (respuestas_correctas_nivel / total_respuestas_nivel) * 100
-
-                    if porcentaje_nivel >= niveles_requisitos[nivel_id]:
-                        niveles_aprobados_total.append(nivel_id)
-                    else:
-                        break  # Si no pasa el 70% en el nivel actual, se detiene y se mantiene el último nivel aprobado
-
-            # Determinar el nivel final
-            if niveles_aprobados_total:
-                nivel_final = max(niveles_aprobados_total)  # El último nivel aprobado
-            else:
-                nivel_final = 1  # Si no pasa en ningún nivel, se queda en Básico
-
-            # Paso 4: Actualizar la puntuación, el porcentaje y el nivel en la base de datos
-            sql_update = """
-                UPDATE Examenes
-                SET puntuacion = %s, porcentaje = %s, nivel = %s
-                WHERE examen_id = %s
-            """
-            cursor.execute(sql_update, (puntuacion_total, porcentaje_aciertos, nivel_final, self.examen_id))
+            # 8) Actualizar la base de datos
+            cursor.execute(
+                "UPDATE Examenes SET puntuacion=%s, porcentaje=%s, nivel=%s WHERE examen_id=%s",
+                (self.puntuacion, self.porcentaje, self.nivel, self.examen_id)
+            )
             conexion.obtener_conexion().commit()
 
-            print(f"✅ Examen calificado: Puntuación = {puntuacion_total}, Porcentaje = {porcentaje_aciertos}%, Nivel final = {nivel_final}")
-
+            print(f"✅ Calificado: {self.correctas}/{self.total_preguntas} correctas → {self.puntuacion} pts, {self.porcentaje}% → {self.nivel}")
         except Exception as e:
+            conexion.obtener_conexion().rollback()
             print(f"❌ Error al calificar el examen: {e}")

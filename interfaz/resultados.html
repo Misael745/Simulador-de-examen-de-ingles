@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resultados del Examen</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='StyleResultados.css') }}">
+</head>
+<body>
+  <div class="resultado-container">
+    <h1 class="resultado-title">¡Examen Completado!</h1>
+    <div class="resultado-grid">
+      <div class="resultado-item">
+        <h2>{{ correctas }} / {{ total_preguntas }}</h2>
+        <p class="resultado-label">Respuestas Correctas</p>
+      </div>
+      <div class="resultado-item">
+        <h2>{{ puntuacion }} / {{ max_puntos }}</h2>
+        <p class="resultado-label">Puntuación (pts)</p>
+      </div>
+      <div class="resultado-item">
+        <h2>{{ percentage }}%</h2>
+        <p class="resultado-label">Porcentaje</p>
+      </div>
+      <div class="resultado-item">
+        <h2>{{ level }}</h2>
+        <p class="resultado-label">Nivel Obtenido</p>
+      </div>
+    </div>
+    <a href="{{ url_for('dashboard') }}" class="btn-volver">Volver al inicio</a>
+  </div>
+</body>
+</html>

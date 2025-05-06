@@ -2,67 +2,90 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Examen</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 50px auto;
-            max-width: 700px;
-            background-color: #f9f9f9;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        .pregunta {
-            margin-bottom: 30px;
-        }
-        .opcion {
-            display: block;
-            margin: 10px 0;
-        }
-        .navegacion {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
-        }
-        .navegacion button {
-            padding: 10px 20px;
-            font-size: 16px;
-        }
-        .indice {
-            text-align: right;
-            color: #666;
-        }
-    </style>
+    <title>Examen de {{ tipo|capitalize }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='StyleExamen.css') }}">
 </head>
 <body>
-    <form method="post" action="/guardar_respuesta">
-        <div class="pregunta">
-            <div class="indice">Pregunta {{ indice_actual + 1 }} de {{ total_preguntas }}</div>
-            <h3>{{ pregunta.texto }}</h3>
-            {% for r in pregunta.respuestas %}
-                <label class="opcion">
-                    <input type="radio" name="respuesta_id" value="{{ r.respuesta_id }}" {% if respuesta_guardada == r.respuesta_id %}checked{% endif %}>
-                    {{ r.texto }}
-                </label>
-            {% endfor %}
-        </div>
-        <div class="navegacion">
-            {% if indice_actual > 0 %}
-                <button name="accion" value="anterior">Anterior</button>
-            {% else %}
-                <div></div>
-            {% endif %}
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for msg in messages %}
+                    <p class="flash">{{ msg }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
 
-            {% if indice_actual < total_preguntas - 1 %}
-                <button name="accion" value="siguiente">Siguiente</button>
-            {% else %}
-                <button name="accion" value="terminar">Terminar</button>
-            {% endif %}
-        </div>
-        <input type="hidden" name="indice_actual" value="{{ indice_actual }}">
-        <input type="hidden" name="examen_id" value="{{ examen_id }}">
-        <input type="hidden" name="pregunta_id" value="{{ pregunta.pregunta_id }}">
-    </form>
+
+<h1>Examen de {{ tipo|capitalize }}</h1>
+<div id="timer">00:00</div>
+
+<form id="exam-form" method="post" action="/guardar_respuesta">
+    <div class="pregunta">
+        <div class="indice">Pregunta {{ indice_actual + 1 }} de {{ total_preguntas }}</div>
+        <h3>{{ pregunta.texto }}</h3>
+        {% for r in pregunta.respuestas %}
+            <label class="opcion">
+                <input type="radio" name="respuesta_id" value="{{ r.respuesta_id }}" 
+                       {% if respuesta_guardada == r.respuesta_id %}checked{% endif %}>
+                {{ r.texto }}
+            </label>
+        {% endfor %}
+    </div>
+
+    <div class="navegacion">
+        {% if indice_actual > 0 %}
+            <button name="accion" value="anterior">Anterior</button>
+        {% endif %}
+        {% if indice_actual < total_preguntas - 1 %}
+            <button name="accion" value="siguiente">Siguiente</button>
+        {% else %}
+            <button name="accion" value="terminar">Terminar</button>
+        {% endif %}
+    </div>
+
+    <input type="hidden" name="indice_actual" value="{{ indice_actual }}">
+    <input type="hidden" name="pregunta_id" value="{{ pregunta.pregunta_id }}">
+    <input type="hidden" name="tipo" value="{{ tipo }}">
+    <input type="hidden" name="examen_id" value="{{ examen_id }}">
+    <input type="hidden" name="time_left" id="time_left" value="{{ time_left }}">
+    <input type="hidden" name="timed_out" id="timed_out" value="0">
+</form>
+
+<script>
+    let rem = {{ time_left }};
+    const timerEl    = document.getElementById('timer');
+    const form       = document.getElementById('exam-form');
+    const timeLeftEl = document.getElementById('time_left');
+    const timedOutEl = document.getElementById('timed_out');
+
+    function pad(n) {
+        return String(n).padStart(2, '0');
+    }
+
+    function updateDisplay() {
+        const mm = Math.floor(rem / 60);
+        const ss = rem % 60;
+        timerEl.textContent = `${pad(mm)}:${pad(ss)}`;
+        timeLeftEl.value = rem;
+    }
+
+    updateDisplay();
+    const iv = setInterval(() => {
+        rem = Math.max(rem - 1, 0);
+        updateDisplay();
+        if (rem <= 0) {
+            clearInterval(iv);
+            timedOutEl.value = '1';
+            const act = document.createElement('input');
+            act.type = 'hidden';
+            act.name = 'accion';
+            act.value = '{{ "siguiente" if indice_actual < total_preguntas - 1 else "terminar" }}';
+            form.appendChild(act);
+            form.submit();
+        }
+    }, 1000);
+</script>
+
 </body>
 </html>

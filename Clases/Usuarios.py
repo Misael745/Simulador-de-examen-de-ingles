@@ -50,3 +50,19 @@ class Usuarios:
         finally:
             if cursor:
                 cursor.close()
+
+    @staticmethod
+    def insertar_usuario(conexion, nombre, apellido, correo, contrasena, genero):
+        try:
+            conn = conexion.obtener_conexion()
+            cursor = conn.cursor()
+            sql = """
+                INSERT INTO Usuarios (nombre, apellido, correo, contrasena, genero)
+                VALUES (%s, %s, %s, %s, %s)
+            """
+            cursor.execute(sql, (nombre, apellido, correo, contrasena, genero))
+            conn.commit()
+            return True
+        except Error as e:
+            print(f"❌ Error al insertar usuario: {e}")
+            return False
