@@ -1,10 +1,12 @@
-
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding-top: 100px;
-            background-color: #f9f9f9;
-        }
+        body { font-family: Arial; padding: 20px; background: #f9f9f9; }
+        h1 { text-align: center; }
+        .botones { text-align: center; margin-bottom: 20px; }
+        .botones button { margin: 0 10px; padding: 10px 20px; }
+        .info-intentos { text-align: center; margin-bottom: 30px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        .grafico { width: 80%; max-width: 700px; margin: 30px auto; }
+        .grafico img { width: 100%; }
         button {
             font-size: 18px;
             padding: 15px 30px;
@@ -19,3 +21,4 @@
         button:hover {
             background-color: #218838;
         }
+        
