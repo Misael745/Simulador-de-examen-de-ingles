@@ -1,13 +1,10 @@
 <!DOCTYPE html>
 <html lang="es">
-  
-
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='StyleLogin.css') }}">
-
-    
 </head>
 <body>
     <h2>Iniciar sesión</h2>
@@ -33,5 +30,9 @@
 
     <br>
     <a href="/register">¿No tienes cuenta? Regístrate aquí</a>
+    <br><br>
+    <button type="button" onclick="window.location.href='/'">
+      Volver al inicio
+    </button>
 </body>
 </html>

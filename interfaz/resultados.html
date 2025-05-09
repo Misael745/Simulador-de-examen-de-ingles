@@ -2,7 +2,6 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Resultados del Examen</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='StyleResultados.css') }}">
 </head>
@@ -27,6 +26,28 @@
         <p class="resultado-label">Nivel Obtenido</p>
       </div>
     </div>
+
+    <hr>
+
+    <div class="detalle-container">
+      <h2>Detalle de Respuestas</h2>
+      {% for d in detalle %}
+      <div class="pregunta-detalle">
+        <h3>Pregunta {{ loop.index }}: {{ d.texto }}</h3>
+        <ul>
+          {% for opt in d.opciones %}
+          <li class="
+             {% if opt.respuesta_id == d.correcta %}correct{% endif %}
+             {% if opt.respuesta_id == d.seleccionada and opt.respuesta_id != d.correcta %} incorrect{% endif %}
+          ">
+            {{ opt.texto }}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+
     <a href="{{ url_for('dashboard') }}" class="btn-volver">Volver al inicio</a>
   </div>
 </body>

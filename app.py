@@ -387,45 +387,47 @@ def guardar_respuesta():
     if 'usuario_id' not in session:
         return redirect('/login')
 
-    indice      = int(request.form['indice_actual'])
-    accion      = request.form['accion']
-    respuesta_id= request.form.get('respuesta_id')
-    pregunta_id = request.form['pregunta_id']
-    examen_id   = session['examen_id']
-    timed_out   = request.form.get('timed_out') == '1'
-    rem         = int(request.form.get('time_left', 0))
+    # Datos del formulario
+    indice       = int(request.form['indice_actual'])
+    accion       = request.form['accion']
+    respuesta_id = request.form.get('respuesta_id')
+    pregunta_id  = request.form['pregunta_id']
+    examen_id    = session['examen_id']
+    timed_out    = request.form.get('timed_out') == '1'
+    rem          = int(request.form.get('time_left', 0))
 
-    # actualizar tiempo
+    # 1) Actualizar tiempo restante
     session['time_lefts'][str(indice)] = rem
     session.modified = True
 
-    c = Conexion()
-    conn = c.obtener_conexion()
-    cur  = conn.cursor()
+    # 2) Conexión para registro
+    conexion = Conexion()
+    conn     = conexion.obtener_conexion()
+    cur      = conn.cursor()
 
-    # timeout → respuesta incorrecta aleatoria
+    # 3) Timeout o salto marcado
     if timed_out and not respuesta_id:
+        # Selecciona alguna respuesta incorrecta para registrar
         cur.execute(
             "SELECT respuesta_id FROM Respuestas WHERE pregunta_id=%s AND es_correcta=FALSE LIMIT 1",
             (pregunta_id,)
         )
-        row = cur.fetchone()
-        wrong = row[0] if row else None
+        fila = cur.fetchone()
+        wrong = fila[0] if fila else None
         if wrong:
             cur.execute(
-                "INSERT INTO RespuestasDadas (examen_id,pregunta_id,respuesta_id) VALUES(%s,%s,%s)",
+                "INSERT INTO RespuestasDadas (examen_id,pregunta_id,respuesta_id) VALUES (%s,%s,%s)",
                 (examen_id, pregunta_id, wrong)
             )
-            session['respuestas'][str(indice)] = wrong
-        else:
-            session['respuestas'][str(indice)] = None
+        session['respuestas'][str(indice)] = wrong
         conn.commit()
-        c.cerrar_conexion()
-
-    # respuesta manual
+        conexion.cerrar_conexion()
+        flash('Se te acabó el tiempo o decidiste saltar esta pregunta.')
+    # 4) Respuesta manual
     elif respuesta_id:
         val = int(respuesta_id)
         session['respuestas'][str(indice)] = val
+
         cur.execute(
             "SELECT 1 FROM RespuestasDadas WHERE examen_id=%s AND pregunta_id=%s",
             (examen_id, pregunta_id)
@@ -437,45 +439,53 @@ def guardar_respuesta():
             )
         else:
             cur.execute(
-                "INSERT INTO RespuestasDadas (examen_id,pregunta_id,respuesta_id) VALUES(%s,%s,%s)",
+                "INSERT INTO RespuestasDadas (examen_id,pregunta_id,respuesta_id) VALUES (%s,%s,%s)",
                 (examen_id, pregunta_id, val)
             )
         conn.commit()
-        c.cerrar_conexion()
+        conexion.cerrar_conexion()
 
-    # navegación
-    if accion == 'anterior':
-        return redirect(f'/mostrar_examen?indice={indice-1}&volver=1')
+    # 5) Navegación
     if accion == 'siguiente':
         return redirect(f'/mostrar_examen?indice={indice+1}')
+    # El botón “Anterior” ya no existe, así que no lo manejamos
 
-    # terminar → validar pendientes y calificar
+    # 6) Al terminar: validar pendientes
     if accion == 'terminar':
         preguntas_ids = session.get('preguntas', [])
         total = len(preguntas_ids)
-        pendientes = [i for i in range(total) if str(i) not in session['respuestas']]
+        respuestas = session.get('respuestas', {})
+
+        pendientes = [i for i in range(total) if str(i) not in respuestas]
         if pendientes:
             nums = [str(i+1) for i in pendientes]
             flash(f'Debes responder las preguntas: {", ".join(nums)}.')
             return redirect(f'/mostrar_examen?indice={pendientes[0]}')
 
-        c2 = Conexion()
+        # 7) Calificar
+        conexion2 = Conexion()
         examen = Examenes(session['examen_id'], session['tipo'], session['usuario_id'], '')
-        examen.calificar_examen(c2)
+        examen.calificar_examen(conexion2)
 
-        # guardar resultados
-        session['correctas']       = getattr(examen, 'correctas', 0)
-        session['total_preguntas'] = getattr(examen, 'total_preguntas', 0)
-        session['puntuacion']      = getattr(examen, 'puntuacion', 0)
-        session['max_puntos']      = session['total_preguntas'] * (2.5 if session['tipo']=='final' else 5)
-        session['percentage']      = getattr(examen, 'porcentaje', 0)
-        session['level']           = getattr(examen, 'nivel', 'Desconocido')
+        # 8) Guardar resultados en sesión
+        session['correctas']         = examen.correctas
+        session['total_preguntas']   = examen.total_preguntas
+        session['puntuacion']        = examen.puntuacion
+        session['max_puntos']        = examen.total_preguntas * (2.5 if session['tipo']=='final' else 5)
+        session['percentage']        = examen.porcentaje
+        session['level']             = examen.nivel
+        session['respuestas_usuario']  = session['respuestas']
+        session['preguntas_ordenadas'] = session['preguntas']
 
         flash('Examen finalizado y calificado.')
+
+        # 9) Limpiar variables de examen
         for k in ['preguntas','respuestas','examen_id','tipo','time_lefts']:
             session.pop(k, None)
+
         return redirect('/resultados')
 
+    # 10) En cualquier otro caso, volver al dashboard
     return redirect('/dashboard')
 
 @app.route('/resultados')
@@ -483,12 +493,38 @@ def resultados():
     if 'usuario_id' not in session:
         return redirect('/login')
 
+    # ——— 1) totales ———
     correctas       = session.pop('correctas', 0)
     total_preguntas = session.pop('total_preguntas', 0)
     puntuacion      = session.pop('puntuacion', 0)
     max_puntos      = session.pop('max_puntos', 0)
     percentage      = session.pop('percentage', 0)
     level           = session.pop('level', 'Desconocido')
+
+    # ——— 2) detalle de preguntas y respuestas ———
+    preguntas_ids = session.pop('preguntas_ordenadas', [])
+    resp_usu     = session.pop('respuestas_usuario', {})
+
+    conexion = Conexion()
+    preguntas = Preguntas.obtener_todos(conexion)
+    respuestas= Respuestas.obtener_todos(conexion)
+    conexion.cerrar_conexion()
+
+    # armar lista en orden
+    detalle = []
+    for idx, pid in enumerate(preguntas_ids):
+        p = next(q for q in preguntas if q.pregunta_id == pid)
+        # respuestas de la pregunta
+        opts = [r for r in respuestas if r.pregunta_id == pid]
+        # id correcta
+        corr_id = next(r.respuesta_id for r in opts if r.es_correcta)
+        sel_id  = resp_usu.get(str(idx))
+        detalle.append({
+            'texto': p.texto,
+            'opciones': opts,
+            'seleccionada': sel_id,
+            'correcta': corr_id
+        })
 
     return render_template(
         'resultados.html',
@@ -497,7 +533,8 @@ def resultados():
         puntuacion=puntuacion,
         max_puntos=max_puntos,
         percentage=percentage,
-        level=level
+        level=level,
+        detalle=detalle
     )
 
 @app.route('/logout')

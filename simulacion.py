@@ -91,8 +91,8 @@ def ejecutar_simulacion_practica():
                 examen_usuario.calificar_examen(conexion)
                     # Mostrar examen generado con respuestas
                 print("\n📝 Examen generado: ")
-                for i, pregunta in enumerate(examen, 1):
-                    print(f"{i}. (Nivel {pregunta.nivel_id}) {pregunta.texto[:100]}...")
+                #for i, pregunta in enumerate(examen, 1):
+                    #print(f"{i}. (Nivel {pregunta.nivel_id}) {pregunta.texto[:100]}...")
                     
             else:
                 print(f"🔸 El usuario {usuario.nombre} {usuario.apellido} no puede recibir más exámenes de práctica.")
@@ -158,8 +158,8 @@ def ejecutar_simulacion_final():
                 examen_usuario.calificar_examen(conexion)
 
                 print("\n📝 Examen generado: ")
-                for i, pregunta in enumerate(examen, 1):
-                    print(f"{i}. (Nivel {pregunta.nivel_id}) {pregunta.texto[:50]}...")
+                 #for i, pregunta in enumerate(examen, 1):
+                     #print(f"{i}. (Nivel {pregunta.nivel_id}) {pregunta.texto[:50]}...")
             else:
                 print(f"🔸 El usuario {usuario.nombre} {usuario.apellido} no puede recibir más exámenes finales.")
 

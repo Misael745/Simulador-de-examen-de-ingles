@@ -21,6 +21,6 @@ class RespuestaUsuario:
             valores = (self.examen_id, self.pregunta_id, self.respuesta_id)
             cursor.execute(sql, valores)
             conexion.obtener_conexion().commit()  # Usamos commit() para confirmar cambios
-            print(f"✅ Respuesta registrada - Examen ID: {self.examen_id}, Pregunta ID: {self.pregunta_id}, Respuesta ID: {self.respuesta_id}")
+            
         except Exception as e:
             print(f"❌ Error al guardar respuesta: {e}")

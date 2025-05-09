@@ -1,91 +1,98 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Examen de {{ tipo|capitalize }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='StyleExamen.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Examen</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styleExamen.css') }}">
 </head>
 <body>
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            <div class="flash-messages">
-                {% for msg in messages %}
-                    <p class="flash">{{ msg }}</p>
-                {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
+  <div class="exam-container">
+    <div class="indice">Pregunta {{ indice_actual + 1 }} de {{ total_preguntas }}</div>
 
+    <div class="timer">Tiempo restante: <span id="timer-display">{{ time_left }}</span> s</div>
 
-<h1>Examen de {{ tipo|capitalize }}</h1>
-<div id="timer">00:00</div>
-
-<form id="exam-form" method="post" action="/guardar_respuesta">
     <div class="pregunta">
-        <div class="indice">Pregunta {{ indice_actual + 1 }} de {{ total_preguntas }}</div>
-        <h3>{{ pregunta.texto }}</h3>
-        {% for r in pregunta.respuestas %}
-            <label class="opcion">
-                <input type="radio" name="respuesta_id" value="{{ r.respuesta_id }}" 
-                       {% if respuesta_guardada == r.respuesta_id %}checked{% endif %}>
-                {{ r.texto }}
-            </label>
+      <p class="question-text">{{ pregunta.texto }}</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('guardar_respuesta') }}" id="examForm">
+      <input type="hidden" name="indice_actual" value="{{ indice_actual }}">
+      <input type="hidden" name="pregunta_id" value="{{ pregunta.pregunta_id }}">
+      <input type="hidden" name="timed_out" id="timed_out" value="0">
+      <input type="hidden" name="time_left" id="time_left" value="{{ time_left }}">
+      <input type="hidden" name="forced_action" id="forced_action" value="">
+
+      <ul class="options-list">
+        {% for resp in pregunta.respuestas %}
+        <li class="opcion">
+          <label>
+            <input type="radio" name="respuesta_id" value="{{ resp.respuesta_id }}"
+              {% if respuesta_guardada == resp.respuesta_id %}checked{% endif %}>
+            {{ resp.texto }}
+          </label>
+        </li>
         {% endfor %}
-    </div>
+      </ul>
 
-    <div class="navegacion">
-        {% if indice_actual > 0 %}
-            <button name="accion" value="anterior">Anterior</button>
-        {% endif %}
+      <div class="navegacion" style="justify-content: flex-end; gap: 10px;">
+        {# Mostrar "Siguiente" siempre excepto en la última pregunta #}
         {% if indice_actual < total_preguntas - 1 %}
-            <button name="accion" value="siguiente">Siguiente</button>
-        {% else %}
-            <button name="accion" value="terminar">Terminar</button>
+        <button 
+          type="submit" 
+          name="accion" 
+          value="siguiente" 
+          onclick="return handleSiguiente()"
+        >Siguiente</button>
         {% endif %}
-    </div>
+        {# Mostrar "Terminar" solo en la última pregunta #}
+        {% if indice_actual == total_preguntas - 1 %}
+        <button type="submit" name="accion" value="terminar">Terminar</button>
+        {% endif %}
+      </div>
+    </form>
+  </div>
 
-    <input type="hidden" name="indice_actual" value="{{ indice_actual }}">
-    <input type="hidden" name="pregunta_id" value="{{ pregunta.pregunta_id }}">
-    <input type="hidden" name="tipo" value="{{ tipo }}">
-    <input type="hidden" name="examen_id" value="{{ examen_id }}">
-    <input type="hidden" name="time_left" id="time_left" value="{{ time_left }}">
-    <input type="hidden" name="timed_out" id="timed_out" value="0">
-</form>
-
-<script>
-    let rem = {{ time_left }};
-    const timerEl    = document.getElementById('timer');
-    const form       = document.getElementById('exam-form');
-    const timeLeftEl = document.getElementById('time_left');
-    const timedOutEl = document.getElementById('timed_out');
-
-    function pad(n) {
-        return String(n).padStart(2, '0');
+  <script>
+    function tick() {
+      const timerDisplay = document.getElementById('timer-display');
+      const timeLeftInput = document.getElementById('time_left');
+      let rem = parseInt(timeLeftInput.value, 10);
+      if (rem <= 0) {
+        alert('Se te acabó el tiempo.');
+        document.getElementById('timed_out').value = '1';
+        document.getElementById('accion-field').value = 'siguiente';
+        document.getElementById('examForm').submit();
+      } else {
+        rem--;
+        timeLeftInput.value = rem;
+        timerDisplay.textContent = rem;
+        setTimeout(tick, 1000);
+      }
     }
+    window.onload = tick;
 
-    function updateDisplay() {
-        const mm = Math.floor(rem / 60);
-        const ss = rem % 60;
-        timerEl.textContent = `${pad(mm)}:${pad(ss)}`;
-        timeLeftEl.value = rem;
-    }
-
-    updateDisplay();
-    const iv = setInterval(() => {
-        rem = Math.max(rem - 1, 0);
-        updateDisplay();
-        if (rem <= 0) {
-            clearInterval(iv);
-            timedOutEl.value = '1';
-            const act = document.createElement('input');
-            act.type = 'hidden';
-            act.name = 'accion';
-            act.value = '{{ "siguiente" if indice_actual < total_preguntas - 1 else "terminar" }}';
-            form.appendChild(act);
-            form.submit();
+    function handleSiguiente() {
+      const opciones = document.getElementsByName('respuesta_id');
+      let seleccionado = false;
+      for (let opt of opciones) {
+        if (opt.checked) {
+          seleccionado = true;
+          break;
         }
-    }, 1000);
-</script>
-
+      }
+      if (seleccionado) {
+        return true;
+      } else {
+        if (confirm('¿Estás seguro? Avanzarás y esta pregunta se contará como incorrecta.')) {
+          document.getElementById('timed_out').value = '1';
+          document.getElementById('accion-field').value = 'siguiente';
+          return true;
+        } else {
+          return false;
+        }
+      }
+    }
+  </script>
 </body>
 </html>
